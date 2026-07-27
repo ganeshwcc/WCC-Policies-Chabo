@@ -119,26 +119,6 @@
       const scored = state.paragraphs.map(p=>({p,score:scoreParagraph(qn,p)}));
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
-    function extractRelevantSentences(queryNorm, paragraph){
-      const qTokens = queryNorm.split(' ').filter(Boolean);
-      const sentences = paragraph.text.match(/[^.!?]+[.!?]?/g) || [paragraph.text];
-      if(sentences.length <= 2) return sentences.map(s=>s.trim());
-      const scored = sentences.map((sentence,index)=>{
-        const sn = normalize(sentence);
-        const hits = qTokens.reduce((sum,t)=>sum + (sn.includes(t) ? 1 : 0),0);
-        const phraseBoost = queryNorm && sn.includes(queryNorm) ? 3 : 0;
-        const termDensity = hits / Math.sqrt(sentence.split(' ').length + 1);
-        const lengthScore = Math.min(1, sentence.length / 140);
-        return {sentence:sentence.trim(),score:hits * 3 + phraseBoost + termDensity + lengthScore, index};
-      });
-      const best = scored.reduce((bestSoFar,item)=>item.score > bestSoFar.score ? item : bestSoFar, {sentence:'',score:0,index:0});
-      if(best.score <= 0){
-        return sentences.slice(0,2).map(s=>s.trim());
-      }
-      const start = Math.max(0, best.index - 1);
-      const end = Math.min(sentences.length, best.index + 2);
-      return sentences.slice(start,end).map(s=>s.trim());
-    }
     function extractQuestionTopic(queryNorm){
       const stopWords = new Set(['the','a','an','and','or','of','to','in','for','on','with','by','is','are','was','were','be','can','should','would','could','may','might','this','that','it','as','at','from','about','i','my','me','you','please','help']);
       const tokens = queryNorm.split(' ').filter(Boolean).filter(t=>!stopWords.has(t));
@@ -146,27 +126,27 @@
       const counts = tokens.reduce((acc,token)=>{acc[token]=(acc[token]||0)+1;return acc;},{});
       return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,3).join(' ');
     }
-    function createHumanAnswer(query, relevant){
-      const core = relevant.join(' ');
-      const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
+    function formatParagraphs(paragraphs){
+      return paragraphs.map(p => p.p.text.trim()).join('\n\n');
+    }
+    function createHumanAnswer(query, paragraphs){
       const greeting = isGreeting(query) ? 'Hello! ' : '';
       if(!hasQuestionIntent(query) && isGreeting(query)){
         return `${greeting}I’m here to answer any WCC policy questions you have.`;
       }
-      if(!core){
+      const text = formatParagraphs(paragraphs);
+      if(!text){
         return `${greeting}I found a policy section that may be relevant, but can you ask the question more specifically?`;
       }
-      return `${greeting}${transform(core)}`;
+      return `${greeting}Based on the policy, the most relevant section is:\n\n${text}`;
     }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please try a different policy term or ask more clearly.',confidence:0};
-      const qn = normalize(query);
-      const bestParagraph = matches[0].p;
-      const relevant = extractRelevantSentences(qn, bestParagraph, 3);
-      const answerText = createHumanAnswer(query, relevant, bestParagraph);
+      const topParagraphs = matches.slice(0,2);
+      const answerText = createHumanAnswer(query, topParagraphs);
       return {
         answer: answerText,
-        confidence: Math.min(0.96, 0.6 + matches[0].score * 0.24)
+        confidence: Math.min(0.96, 0.6 + topParagraphs[0].score * 0.24)
       };
     }
     function appendMessage(text,cls){
