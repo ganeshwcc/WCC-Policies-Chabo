@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WCC Policies Chabo</title>
   <style>
+    *{box-sizing:border-box;}
     :root{--bg:#2f0818;--surface:#3f0f25;--surface-soft:#5a1c36;--text:#f7edf4;--muted:#f5d2df;--accent:#ffb2c9;--accent2:#ff6f89;--accent3:#f7797d;--accent-soft:rgba(255,178,201,0.16);--border:rgba(255,255,255,0.14)}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top left,rgba(255,175,199,0.22),transparent 35%),radial-gradient(circle at top right,rgba(255,107,149,0.18),transparent 30%),radial-gradient(circle at bottom left,rgba(255,83,120,0.22),transparent 28%),#2f0818;color:var(--text)}
-    .app{max-width:760px;margin:14px auto;padding:20px;background:linear-gradient(180deg,rgba(50,9,24,0.96),rgba(75,12,38,0.94));border-radius:26px;box-shadow:0 28px 70px rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.12);backdrop-filter:blur(10px);min-height:calc(100vh - 28px);display:flex;flex-direction:column;}
+    html,body{min-height:100vh;height:100%;width:100%;margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top left,rgba(255,175,199,0.22),transparent 35%),radial-gradient(circle at top right,rgba(255,107,149,0.18),transparent 30%),radial-gradient(circle at bottom left,rgba(255,83,120,0.22),transparent 28%),#2f0818;color:var(--text);}
+    body{display:flex;align-items:stretch;justify-content:center;padding:0;overflow:hidden;}
+    .app{max-width:760px;width:100%;margin:0;padding:20px;background:linear-gradient(180deg,rgba(50,9,24,0.96),rgba(75,12,38,0.94));border-radius:0;box-shadow:none;border:0;backdrop-filter:none;height:100vh;display:flex;flex-direction:column;}
     header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between}
     h1{font-size:22px;font-weight:700;line-height:1.2;margin:0;color:#ffdfe8}
     .brand-logo{width:48px;height:48px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.18);box-shadow:0 12px 28px rgba(0,0,0,0.18)}
@@ -15,9 +17,9 @@
     button{background:linear-gradient(135deg,rgba(255,145,170,0.18),rgba(255,90,110,0.12));color:var(--text);border:1px solid rgba(255,255,255,0.14);padding:10px 14px;border-radius:16px;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease}
     button:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(255,145,170,0.28),rgba(255,90,110,0.2));border-color:rgba(255,255,255,0.22);box-shadow:0 16px 30px rgba(0,0,0,0.18)}
     button.primary{background:linear-gradient(135deg,rgba(255,130,160,0.95),rgba(255,75,105,0.95));color:#28040f;border:none;box-shadow:0 18px 30px rgba(189,53,94,0.28)}
-    main{margin-top:18px;flex:1;}
+    main{margin-top:18px;flex:1;display:flex;min-height:0;}
     .chat{background:linear-gradient(180deg,rgba(54,13,33,0.96),rgba(51,9,29,0.98));padding:24px;display:flex;flex-direction:column;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.12);border-radius:26px;min-height:0;flex:1;}
-    .messages{flex:1;overflow:auto;padding:10px 8px;display:flex;flex-direction:column;gap:12px;min-height:0}
+    .messages{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px;display:flex;flex-direction:column;gap:12px;min-height:0;}
     .msg{max-width:88%;padding:16px;border-radius:18px;white-space:pre-wrap;word-break:break-word;line-height:1.65;box-shadow:0 14px 30px rgba(0,0,0,0.2)}
     .user{align-self:flex-end;background:linear-gradient(135deg,rgba(255,140,170,0.98),rgba(255,215,220,0.9));color:#360d18}
     .bot{align-self:flex-start;background:linear-gradient(135deg,rgba(255,143,171,0.26),rgba(255,83,120,0.18));border:1px solid rgba(255,255,255,0.12);color:var(--text)}
@@ -27,13 +29,16 @@
     input[type=text]::placeholder{color:rgba(255,255,255,0.7)}
     footer{margin-top:20px;font-size:13px;color:var(--muted);text-align:center}
     @media(max-width:720px){
-      .app{margin:10px;max-width:100%;padding:16px;}
+      body{padding:0;}
+      .app{margin:0;max-width:100%;padding:14px;min-height:100vh;}
       .chat{padding:18px;}
       .composer{flex-direction:column;}
       button{width:100%;}
       .controls{width:100%;justify-content:flex-end;}
       h1{font-size:20px;}
       .brand-logo{width:44px;height:44px;}
+      .messages{padding:8px 4px;gap:10px;}
+      .msg{padding:14px;}
     }
   </style>
 </head>
@@ -57,7 +62,7 @@
           <div class="meta">Loading data from AD107-Student-Records.txt. Ask questions once it loads.</div>
         </div>
         <div class="composer">
-          <input id="query" type="text" placeholder="Ask a question about the loaded document..." />
+          <input id="query" type="text" placeholder="Ask your question" />
           <button id="ask" class="primary">Ask</button>
         </div>
       </section>
