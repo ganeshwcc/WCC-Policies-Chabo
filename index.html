@@ -150,15 +150,11 @@
       const core = relevant.join(' ');
       const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
       const greeting = isGreeting(query) ? 'Hello! ' : '';
-      const topic = extractQuestionTopic(normalize(query));
       if(!hasQuestionIntent(query) && isGreeting(query)){
         return `${greeting}I’m here to answer any WCC policy questions you have.`;
       }
       if(!core){
         return `${greeting}I found a policy section that may be relevant, but can you ask the question more specifically?`;
-      }
-      if(topic){
-        return `${greeting}For ${topic}, ${transform(core)}`;
       }
       return `${greeting}${transform(core)}`;
     }
