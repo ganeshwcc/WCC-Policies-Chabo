@@ -59,7 +59,7 @@
     <main>
       <section class="chat">
         <div class="messages" id="messages">
-          <div class="meta">Loading data from AD107-Student-Records.txt. Ask questions once it loads.</div>
+          <div class="meta">Loading Policy Depot. Ask questions once it loads.</div>
         </div>
         <div class="composer">
           <input id="query" type="text" placeholder="Ask your question" />
@@ -128,7 +128,7 @@
     }
     document.getElementById('btnClear').addEventListener('click',()=>{document.getElementById('messages').innerHTML=''; appendMessage('Conversation cleared','bot');});
     async function init(){
-      const fileName = 'AD107-Student-Records.txt';
+      const fileName = 'Policy Depot';
       try{
         const res = await fetch(fileName);
         if(!res.ok) throw new Error('File not found');
