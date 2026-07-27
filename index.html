@@ -129,6 +129,18 @@
     function formatParagraphs(paragraphs){
       return paragraphs.map(p => p.p.text.trim()).join('\n\n');
     }
+    function expandParagraphContext(paragraphId){
+      const paragraphs = state.paragraphs;
+      const context = [];
+      let index = paragraphId;
+      while(index < paragraphs.length && context.length < 3){
+        context.push(paragraphs[index]);
+        const combinedLength = context.reduce((sum,p)=>sum + p.text.length,0);
+        if(combinedLength > 240) break;
+        index += 1;
+      }
+      return context;
+    }
     function createHumanAnswer(query, paragraphs){
       const greeting = isGreeting(query) ? 'Hello! ' : '';
       if(!hasQuestionIntent(query) && isGreeting(query)){
@@ -142,11 +154,12 @@
     }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please try a different policy term or ask more clearly.',confidence:0};
-      const topParagraphs = matches.slice(0,2);
-      const answerText = createHumanAnswer(query, topParagraphs);
+      const primary = matches[0].p;
+      const paragraphs = primary.text.trim().length < 80 ? expandParagraphContext(primary.id) : [primary];
+      const answerText = createHumanAnswer(query, paragraphs);
       return {
         answer: answerText,
-        confidence: Math.min(0.96, 0.6 + topParagraphs[0].score * 0.24)
+        confidence: Math.min(0.96, 0.6 + matches[0].score * 0.24)
       };
     }
     function appendMessage(text,cls){
