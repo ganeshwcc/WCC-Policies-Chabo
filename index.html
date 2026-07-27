@@ -115,11 +115,12 @@
       const scored = sentences.map(sentence=>{
         const sn = normalize(sentence);
         const hits = qTokens.reduce((sum,t)=>sum + (sn.includes(t) ? 1 : 0),0);
-        return {sentence:sentence.trim(),hits};
-      }).sort((a,b)=>b.hits - a.hits);
-      const top = scored.filter(item=>item.hits>0).slice(0,2).map(item=>item.sentence);
-      if(top.length) return top.join(' ');
-      return sentences[0].trim();
+        const lengthScore = Math.min(1, sentence.length / 120);
+        return {sentence:sentence.trim(),score:hits * 1.5 + lengthScore};
+      }).sort((a,b)=>b.score - a.score);
+      const topSentences = scored.filter(item=>item.score > 0).slice(0,2).map(item=>item.sentence);
+      if(topSentences.length) return topSentences.join(' ');
+      return sentences.slice(0,2).map(s=>s.trim()).join(' ');
     }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please rephrase your question or try a related policy term.',confidence:0};
@@ -133,10 +134,9 @@
       const paragraph = state.paragraphs[bestParagraphId];
       const summary = summarizeParagraph(qn, paragraph);
       const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
-      const header = paragraph.norm.includes(qn) ? 'Relevant policy paragraph:' : 'Most relevant policy paragraph:';
-      const prefix = paragraph.norm.includes(qn) ? 'In summary, this means:' : 'In summary, this means:';
+      const response = transform(summary);
       return {
-        answer:`${header}\n\n${transform(paragraph.text)}\n\n${prefix} ${transform(summary)}`,
+        answer:`Based on the policy, ${response}`,
         confidence:Math.min(0.96, 0.5 + paragraphScores[bestParagraphId] * 0.2)
       };
     }
