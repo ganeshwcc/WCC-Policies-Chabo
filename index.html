@@ -5,35 +5,48 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>WCC Policies Chabo</title>
   <style>
-    :root{--bg:#12021d;--surface:#2c0f33;--surface-soft:#3f1f53;--text:#f8f0fb;--muted:#e7c6e9;--accent:#ff6b95;--accent2:#6b64ff;--accent3:#39d1c7;--accent-soft:rgba(255,107,149,0.16);--border:rgba(255,255,255,0.16)}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top left,rgba(255,107,149,0.18),transparent 35%),radial-gradient(circle at top right,rgba(107,100,255,0.2),transparent 30%),radial-gradient(circle at bottom left,rgba(57,209,199,0.18),transparent 28%),#12021d;color:var(--text)}
-    .app{max-width:980px;margin:28px auto;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02));border-radius:28px;box-shadow:0 32px 90px rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.12);backdrop-filter:blur(8px)}
-    header{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
-    h1{font-size:24px;font-weight:700;line-height:1.2;margin:0}
-    .controls{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    button{background:linear-gradient(135deg,rgba(255,107,149,0.15),rgba(107,100,255,0.15));color:var(--text);border:1px solid rgba(255,255,255,0.12);padding:10px 14px;border-radius:16px;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease}
-    button:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(255,107,149,0.3),rgba(107,100,255,0.25));border-color:rgba(255,255,255,0.22);box-shadow:0 18px 35px rgba(255,107,149,0.16)}
-    button.primary{background:linear-gradient(135deg,rgba(255,107,149,0.98),rgba(57,209,199,0.98));color:#1b0218;border:none;box-shadow:0 20px 38px rgba(255,107,149,0.25)}
-    main{margin-top:22px}
-    .chat{background:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));padding:32px 28px;min-height:540px;display:flex;flex-direction:column;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.14);border-radius:28px}
-    .messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:14px}
-    .msg{max-width:85%;padding:18px;border-radius:20px;white-space:pre-wrap;word-break:break-word;line-height:1.7;box-shadow:0 16px 36px rgba(0,0,0,0.16)}
-    .user{align-self:flex-end;background:linear-gradient(135deg,rgba(255,107,149,0.94),rgba(255,191,140,0.85));color:#360d18}
-    .bot{align-self:flex-start;background:linear-gradient(135deg,rgba(107,100,255,0.18),rgba(57,209,199,0.16));border:1px solid rgba(255,255,255,0.12);color:var(--text)}
+    :root{--bg:#2f0818;--surface:#3f0f25;--surface-soft:#5a1c36;--text:#f7edf4;--muted:#f5d2df;--accent:#ffb2c9;--accent2:#ff6f89;--accent3:#f7797d;--accent-soft:rgba(255,178,201,0.16);--border:rgba(255,255,255,0.14)}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top left,rgba(255,175,199,0.22),transparent 35%),radial-gradient(circle at top right,rgba(255,107,149,0.18),transparent 30%),radial-gradient(circle at bottom left,rgba(255,83,120,0.22),transparent 28%),#2f0818;color:var(--text)}
+    .app{max-width:760px;margin:14px auto;padding:20px;background:linear-gradient(180deg,rgba(50,9,24,0.96),rgba(75,12,38,0.94));border-radius:26px;box-shadow:0 28px 70px rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.12);backdrop-filter:blur(10px);min-height:calc(100vh - 28px);display:flex;flex-direction:column;}
+    header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between}
+    h1{font-size:22px;font-weight:700;line-height:1.2;margin:0;color:#ffdfe8}
+    .brand-logo{width:48px;height:48px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.18);box-shadow:0 12px 28px rgba(0,0,0,0.18)}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    button{background:linear-gradient(135deg,rgba(255,145,170,0.18),rgba(255,90,110,0.12));color:var(--text);border:1px solid rgba(255,255,255,0.14);padding:10px 14px;border-radius:16px;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease}
+    button:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(255,145,170,0.28),rgba(255,90,110,0.2));border-color:rgba(255,255,255,0.22);box-shadow:0 16px 30px rgba(0,0,0,0.18)}
+    button.primary{background:linear-gradient(135deg,rgba(255,130,160,0.95),rgba(255,75,105,0.95));color:#28040f;border:none;box-shadow:0 18px 30px rgba(189,53,94,0.28)}
+    main{margin-top:18px;flex:1;}
+    .chat{background:linear-gradient(180deg,rgba(54,13,33,0.96),rgba(51,9,29,0.98));padding:24px;display:flex;flex-direction:column;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.12);border-radius:26px;min-height:0;flex:1;}
+    .messages{flex:1;overflow:auto;padding:10px 8px;display:flex;flex-direction:column;gap:12px;min-height:0}
+    .msg{max-width:88%;padding:16px;border-radius:18px;white-space:pre-wrap;word-break:break-word;line-height:1.65;box-shadow:0 14px 30px rgba(0,0,0,0.2)}
+    .user{align-self:flex-end;background:linear-gradient(135deg,rgba(255,140,170,0.98),rgba(255,215,220,0.9));color:#360d18}
+    .bot{align-self:flex-start;background:linear-gradient(135deg,rgba(255,143,171,0.26),rgba(255,83,120,0.18));border:1px solid rgba(255,255,255,0.12);color:var(--text)}
     .meta{font-size:13px;color:var(--muted);margin-bottom:6px}
-    .composer{display:flex;gap:10px;margin-top:14px}
-    input[type=text]{flex:1;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.08);color:var(--text);outline:none}
-    input[type=text]::placeholder{color:rgba(255,255,255,0.65)}
-    footer{margin-top:24px;font-size:13px;color:var(--muted);text-align:center}
+    .composer{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+    input[type=text]{flex:1;min-width:0;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:var(--text);outline:none;box-shadow:inset 0 2px 10px rgba(0,0,0,0.18)}
+    input[type=text]::placeholder{color:rgba(255,255,255,0.7)}
+    footer{margin-top:20px;font-size:13px;color:var(--muted);text-align:center}
+    @media(max-width:720px){
+      .app{margin:10px;max-width:100%;padding:16px;}
+      .chat{padding:18px;}
+      .composer{flex-direction:column;}
+      button{width:100%;}
+      .controls{width:100%;justify-content:flex-end;}
+      h1{font-size:20px;}
+      .brand-logo{width:44px;height:44px;}
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <header>
-      <div>
-      <h1>WCC Policies Chabo</h1>
-      <p style="margin:8px 0 0;color:#f1cfe6;font-size:14px;max-width:520px;line-height:1.5">A vibrant policy assistant for WCC documents — ask anything about the loaded content.</p>
-    </div>
+      <div style="display:flex;align-items:center;gap:14px;min-width:0;">
+        <img class="brand-logo" src="logo.jpg" alt="WCC logo" />
+        <div style="min-width:0;">
+          <h1>WCC Policies Chabo</h1>
+          <p style="margin:8px 0 0;color:#d7c9ff;font-size:14px;max-width:520px;line-height:1.5;white-space:normal;">A vibrant policy assistant for WCC documents.</p>
+        </div>
+      </div>
       <div class="controls">
         <button id="btnClear">Clear</button>
       </div>
@@ -117,7 +130,7 @@
         const txt = await res.text();
         indexText(txt);
         document.getElementById('messages').innerHTML = '';
-        appendMessage(`Loaded ${fileName} from the same folder. Ask a question now.`, 'bot');
+        appendMessage('I am your chat buddy and I can answer your questions related to policy.', 'bot');
       }catch(e){
         const fallback = `# WCC Policies Chabo\nCould not load ${fileName}.`;
         indexText(fallback);
