@@ -143,10 +143,8 @@
       const paragraphs = state.paragraphs;
       const context = [];
       let index = paragraphId;
-      while(index < paragraphs.length && context.length < 3){
+      while(index < paragraphs.length && context.length < 4){
         context.push(paragraphs[index]);
-        const combinedLength = context.reduce((sum,p)=>sum + p.text.length,0);
-        if(combinedLength > 240) break;
         index += 1;
       }
       return context;
@@ -164,8 +162,7 @@
     }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please try a different policy term or ask more clearly.',confidence:0};
-      const primary = matches[0].p;
-      const paragraphs = primary.text.trim().length < 80 ? expandParagraphContext(primary.id) : [primary];
+      const paragraphs = matches.slice(0, 2).map(m => m.p);
       const answerText = createHumanAnswer(query, paragraphs);
       return {
         answer: answerText,
