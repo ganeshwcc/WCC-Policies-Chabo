@@ -105,40 +105,48 @@
     }
     function scoreParagraph(queryNorm, paragraph){
       const qTokens = normalize(queryNorm).split(' ').filter(Boolean);
-      const pTokens = new Set(paragraph.norm.split(' ').filter(Boolean));
-      const common = qTokens.reduce((sum,t)=>sum + (pTokens.has(t) ? 1 : 0),0);
-      const overlap = common / Math.sqrt(qTokens.length * pTokens.size + 1e-9);
+      const pTokens = paragraph.norm.split(' ').filter(Boolean);
+      const pTokenSet = new Set(pTokens);
+      const common = qTokens.reduce((sum,t)=>sum + (pTokenSet.has(t) ? 1 : 0),0);
+      const overlap = common / Math.sqrt(qTokens.length * pTokens.length + 1e-9);
       const exactPhrase = queryNorm && paragraph.norm.includes(queryNorm) ? 1.0 : 0;
-      const hasAll = qTokens.length && qTokens.every(t=>pTokens.has(t));
-      return overlap + exactPhrase + (hasAll ? 0.35 : 0);
+      const hasAll = qTokens.length && qTokens.every(t=>pTokenSet.has(t));
+      const density = common / (pTokens.length + 1);
+      return overlap + exactPhrase + (hasAll ? 0.35 : 0) + Math.min(0.25, density * 3);
     }
     function retrieve(query, topK=4){
       const qn = normalize(query);
       const scored = state.paragraphs.map(p=>({p,score:scoreParagraph(qn,p)}));
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
-    function extractRelevantSentences(queryNorm, paragraph, limit=3){
+    function extractRelevantSentences(queryNorm, paragraph){
       const qTokens = queryNorm.split(' ').filter(Boolean);
       const sentences = paragraph.text.match(/[^.!?]+[.!?]?/g) || [paragraph.text];
-      const scored = sentences.map(sentence=>{
+      if(sentences.length <= 2) return sentences.map(s=>s.trim());
+      const scored = sentences.map((sentence,index)=>{
         const sn = normalize(sentence);
         const hits = qTokens.reduce((sum,t)=>sum + (sn.includes(t) ? 1 : 0),0);
-        const phraseBoost = queryNorm && sn.includes(queryNorm) ? 2 : 0;
+        const phraseBoost = queryNorm && sn.includes(queryNorm) ? 3 : 0;
+        const termDensity = hits / Math.sqrt(sentence.split(' ').length + 1);
         const lengthScore = Math.min(1, sentence.length / 140);
-        return {sentence:sentence.trim(),score:hits * 2 + phraseBoost + lengthScore};
-      }).sort((a,b)=>b.score - a.score);
-      const best = scored.filter(item=>item.score > 0).slice(0,limit);
-      if(best.length) return best.map(item=>item.sentence);
-      return sentences.slice(0,Math.min(limit,sentences.length)).map(s=>s.trim());
+        return {sentence:sentence.trim(),score:hits * 3 + phraseBoost + termDensity + lengthScore, index};
+      });
+      const best = scored.reduce((bestSoFar,item)=>item.score > bestSoFar.score ? item : bestSoFar, {sentence:'',score:0,index:0});
+      if(best.score <= 0){
+        return sentences.slice(0,2).map(s=>s.trim());
+      }
+      const start = Math.max(0, best.index - 1);
+      const end = Math.min(sentences.length, best.index + 2);
+      return sentences.slice(start,end).map(s=>s.trim());
     }
     function extractQuestionTopic(queryNorm){
       const stopWords = new Set(['the','a','an','and','or','of','to','in','for','on','with','by','is','are','was','were','be','can','should','would','could','may','might','this','that','it','as','at','from','about','i','my','me','you','please','help']);
       const tokens = queryNorm.split(' ').filter(Boolean).filter(t=>!stopWords.has(t));
       if(!tokens.length) return '';
-      const counts = tokens.reduce((acc,token)=>{acc[token]=(acc[token]||0)+1;return acc;},{})
+      const counts = tokens.reduce((acc,token)=>{acc[token]=(acc[token]||0)+1;return acc;},{});
       return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,3).join(' ');
     }
-    function createHumanAnswer(query, relevant, paragraph){
+    function createHumanAnswer(query, relevant){
       const core = relevant.join(' ');
       const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
       const greeting = isGreeting(query) ? 'Hello! ' : '';
