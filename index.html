@@ -103,73 +103,66 @@
       state.paragraphs = txt.replace(/\r/g,'').split(/\n{2,}/g).map(p=>p.trim()).filter(Boolean).map((text,i)=>({id:i,text,norm:normalize(text)}));
       state.chunks=chunkText(txt);
     }
-    function scoreChunk(queryNorm, chunk){
+    function scoreParagraph(queryNorm, paragraph){
       const qTokens = normalize(queryNorm).split(' ').filter(Boolean);
-      const cTokens = new Set(chunk.norm.split(' ').filter(Boolean));
-      const common = qTokens.reduce((sum,t)=>sum + (cTokens.has(t) ? 1 : 0),0);
-      const overlap = common / Math.sqrt(qTokens.length * cTokens.size + 1e-9);
-      const hasAll = qTokens.every(t=>cTokens.has(t));
-      const exactPhrase = queryNorm && chunk.norm.includes(queryNorm) ? 0.8 : 0;
-      return overlap + (hasAll ? 0.25 : 0) + exactPhrase;
+      const pTokens = new Set(paragraph.norm.split(' ').filter(Boolean));
+      const common = qTokens.reduce((sum,t)=>sum + (pTokens.has(t) ? 1 : 0),0);
+      const overlap = common / Math.sqrt(qTokens.length * pTokens.size + 1e-9);
+      const exactPhrase = queryNorm && paragraph.norm.includes(queryNorm) ? 1.0 : 0;
+      const hasAll = qTokens.length && qTokens.every(t=>pTokens.has(t));
+      return overlap + exactPhrase + (hasAll ? 0.35 : 0);
     }
     function retrieve(query, topK=4){
       const qn = normalize(query);
-      const scored = state.chunks.map(c=>({c,score:scoreChunk(qn,c)}));
+      const scored = state.paragraphs.map(p=>({p,score:scoreParagraph(qn,p)}));
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
-    function extractRelevantSentences(queryNorm, paragraph, limit=2){
+    function extractRelevantSentences(queryNorm, paragraph, limit=3){
       const qTokens = queryNorm.split(' ').filter(Boolean);
       const sentences = paragraph.text.match(/[^.!?]+[.!?]?/g) || [paragraph.text];
       const scored = sentences.map(sentence=>{
         const sn = normalize(sentence);
         const hits = qTokens.reduce((sum,t)=>sum + (sn.includes(t) ? 1 : 0),0);
         const phraseBoost = queryNorm && sn.includes(queryNorm) ? 2 : 0;
-        const lengthScore = Math.min(1, sentence.length / 120);
+        const lengthScore = Math.min(1, sentence.length / 140);
         return {sentence:sentence.trim(),score:hits * 2 + phraseBoost + lengthScore};
       }).sort((a,b)=>b.score - a.score);
       const best = scored.filter(item=>item.score > 0).slice(0,limit);
       if(best.length) return best.map(item=>item.sentence);
-      return sentences.slice(0,limit).map(s=>s.trim());
+      return sentences.slice(0,Math.min(limit,sentences.length)).map(s=>s.trim());
     }
     function extractQuestionTopic(queryNorm){
-      const stopWords = new Set(['the','a','an','and','or','of','to','in','for','on','with','by','is','are','was','were','be','can','should','would','could','may','might','this','that','it','as','at','from','about','i','my','me','you']);
+      const stopWords = new Set(['the','a','an','and','or','of','to','in','for','on','with','by','is','are','was','were','be','can','should','would','could','may','might','this','that','it','as','at','from','about','i','my','me','you','please','help']);
       const tokens = queryNorm.split(' ').filter(Boolean).filter(t=>!stopWords.has(t));
       if(!tokens.length) return '';
       const counts = tokens.reduce((acc,token)=>{acc[token]=(acc[token]||0)+1;return acc;},{})
-      const sorted = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
-      return sorted.slice(0,3).join(' ');
+      return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,3).join(' ');
+    }
+    function createHumanAnswer(query, relevant, paragraph){
+      const core = relevant.join(' ');
+      const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
+      const greeting = isGreeting(query) ? 'Hello! ' : '';
+      const topic = extractQuestionTopic(normalize(query));
+      if(!hasQuestionIntent(query) && isGreeting(query)){
+        return `${greeting}I’m here to answer any WCC policy questions you have.`;
+      }
+      if(!core){
+        return `${greeting}I found a policy section that may be relevant, but can you ask the question more specifically?`;
+      }
+      if(topic){
+        return `${greeting}For ${topic}, ${transform(core)}`;
+      }
+      return `${greeting}${transform(core)}`;
     }
     function synthesizeAnswer(query,matches){
-      if(!matches.length) return {answer:'I could not locate a matching policy reference. Please rephrase your question or try a related policy term.',confidence:0};
+      if(!matches.length) return {answer:'I could not locate a matching policy reference. Please try a different policy term or ask more clearly.',confidence:0};
       const qn = normalize(query);
-      const paragraphScores = {};
-      matches.forEach(match => {
-        const pid = match.c.paragraphId;
-        paragraphScores[pid] = Math.max(paragraphScores[pid] || 0, match.score);
-      });
-      const bestParagraphId = Object.keys(paragraphScores).sort((a,b)=>paragraphScores[b]-paragraphScores[a])[0];
-      const paragraph = state.paragraphs[bestParagraphId];
-      const relevant = extractRelevantSentences(qn, paragraph, 2);
-      const topic = extractQuestionTopic(qn);
-      const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
-      const answerText = relevant.join(' ');
-      const greeting = isGreeting(query) ? 'Hello! ' : '';
-      let humanAnswer = '';
-      if(answerText){
-        if(topic) {
-          humanAnswer = `${greeting}I understand you're asking about ${topic}. ${transform(answerText)}`;
-        } else {
-          humanAnswer = `${greeting}${transform(answerText)}`;
-        }
-      } else {
-        humanAnswer = `${greeting}I found a relevant policy section, but I need a clearer question to answer it precisely.`;
-      }
-      if(!hasQuestionIntent(query) && !isGreeting(query)) {
-        humanAnswer = `${greeting}If you have a question about WCC policy, please ask and I will find the best answer for you.`;
-      }
+      const bestParagraph = matches[0].p;
+      const relevant = extractRelevantSentences(qn, bestParagraph, 3);
+      const answerText = createHumanAnswer(query, relevant, bestParagraph);
       return {
-        answer: humanAnswer,
-        confidence: Math.min(0.96, 0.52 + paragraphScores[bestParagraphId] * 0.22)
+        answer: answerText,
+        confidence: Math.min(0.96, 0.6 + matches[0].score * 0.24)
       };
     }
     function appendMessage(text,cls){
@@ -183,6 +176,10 @@
     function runQuery(){
       const q=document.getElementById('query').value.trim(); if(!q) return; appendMessage(q,'user'); document.getElementById('query').value='';
       if(!state.text){appendMessage('No document loaded.','bot');return;}
+      if(isGreeting(q) && !hasQuestionIntent(q)){
+        appendMessage('Hello! How can I help you with WCC policy today?','bot');
+        return;
+      }
       const matches=retrieve(q,5);
       const out=synthesizeAnswer(q,matches);
       appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
