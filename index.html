@@ -73,20 +73,28 @@
     const state = {text:'', chunks:[]};
     function normalize(s){return s.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim()}
     function chunkText(text, chunkSize=1000){
-      const sentences = text.replace(/\r/g,'').split(/(?<=[.!?])\s+/g).map(s=>s.trim()).filter(Boolean);
+      const paragraphs = text.replace(/\r/g,'').split(/\n{2,}/g).map(p=>p.trim()).filter(Boolean);
       const parts=[];
-      for(let i=0;i<sentences.length;i++){
-        let chunk = sentences[i];
-        let j = i;
-        while(chunk.length < chunkSize && j + 1 < sentences.length){
-          chunk += ' ' + sentences[++j];
+      paragraphs.forEach((paragraph, paragraphId)=>{
+        const sentences = paragraph.split(/(?<=[.!?])\s+/g).map(s=>s.trim()).filter(Boolean);
+        let chunk = '';
+        let startId = 0;
+        for(let i=0;i<sentences.length;i++){
+          if(!chunk) chunk = sentences[i];
+          else chunk += ' ' + sentences[i];
+          if(chunk.length >= chunkSize || i === sentences.length - 1){
+            parts.push({text:chunk, norm:normalize(chunk), paragraphId});
+            chunk = '';
+          }
         }
-        parts.push(chunk);
-        i = j;
-      }
-      return parts.map((t,i)=>({id:i,text:t,norm:normalize(t)}));
+      });
+      return parts.map((t,i)=>({id:i,...t}));
     }
-    function indexText(txt){state.text=txt;state.chunks=chunkText(txt)}
+    function indexText(txt){
+      state.text=txt;
+      state.paragraphs = txt.replace(/\r/g,'').split(/\n{2,}/g).map(p=>p.trim()).filter(Boolean).map((text,i)=>({id:i,text,norm:normalize(text)}));
+      state.chunks=chunkText(txt);
+    }
     function scoreChunk(queryNorm, chunk){
       const qTokens = normalize(queryNorm).split(' ').filter(Boolean);
       const cTokens = new Set(chunk.norm.split(' ').filter(Boolean));
@@ -101,38 +109,36 @@
       const scored = state.chunks.map(c=>({c,score:scoreChunk(qn,c)}));
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
+    function summarizeParagraph(queryNorm, paragraph){
+      const qTokens = queryNorm.split(' ').filter(Boolean);
+      const sentences = paragraph.text.match(/[^.!?]+[.!?]?/g) || [paragraph.text];
+      const scored = sentences.map(sentence=>{
+        const sn = normalize(sentence);
+        const hits = qTokens.reduce((sum,t)=>sum + (sn.includes(t) ? 1 : 0),0);
+        return {sentence:sentence.trim(),hits};
+      }).sort((a,b)=>b.hits - a.hits);
+      const top = scored.filter(item=>item.hits>0).slice(0,2).map(item=>item.sentence);
+      if(top.length) return top.join(' ');
+      return sentences[0].trim();
+    }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please rephrase your question or try a related policy term.',confidence:0};
       const qn = normalize(query);
-      const qTokens = qn.split(' ').filter(Boolean);
-      const exactMatch = matches.find(m=>m.c.norm.includes(qn));
+      const paragraphScores = {};
+      matches.forEach(match => {
+        const pid = match.c.paragraphId;
+        paragraphScores[pid] = Math.max(paragraphScores[pid] || 0, match.score);
+      });
+      const bestParagraphId = Object.keys(paragraphScores).sort((a,b)=>paragraphScores[b]-paragraphScores[a])[0];
+      const paragraph = state.paragraphs[bestParagraphId];
+      const summary = summarizeParagraph(qn, paragraph);
       const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
-      if(exactMatch){
-        return {answer:`According to the policy, ${transform(exactMatch.c.text)}`,confidence:0.96};
-      }
-      const sentenceCandidates = [];
-      matches.forEach(m=>{
-        const sentences = m.c.text.match(/[^.!?]+[.!?]?/g) || [m.c.text];
-        sentences.forEach(s=>{
-          const sn = normalize(s);
-          const hits = qTokens.filter(t=>sn.includes(t)).length;
-          const containsAll = qTokens.length && qTokens.every(t=>sn.includes(t));
-          sentenceCandidates.push({s:s.trim(),hits,containsAll,score:m.score});
-        });
-      });
-      sentenceCandidates.sort((a,b)=>{
-        const scoreA = (a.containsAll ? 100 : 0) + a.hits*12 + a.score;
-        const scoreB = (b.containsAll ? 100 : 0) + b.hits*12 + b.score;
-        return scoreB - scoreA;
-      });
-      const best = sentenceCandidates[0];
-      if(best && best.hits){
-        const confidence = Math.min(0.94, 0.5 + best.hits * 0.08 + best.score * 0.15);
-        const prefix = best.containsAll ? 'The policy indicates:' : 'The most relevant policy passage is:';
-        return {answer:`${prefix} ${transform(best.s)}`,confidence};
-      }
-      const fallback = transform(matches[0].c.text.split(/\n/)[0] || matches[0].c.text);
-      return {answer:`I located the closest relevant policy passage: ${fallback}`,confidence:Math.min(0.75, 0.4 + matches[0].score*0.2)};
+      const header = paragraph.norm.includes(qn) ? 'Relevant policy paragraph:' : 'Most relevant policy paragraph:';
+      const prefix = paragraph.norm.includes(qn) ? 'In summary, this means:' : 'In summary, this means:';
+      return {
+        answer:`${header}\n\n${transform(paragraph.text)}\n\n${prefix} ${transform(summary)}`,
+        confidence:Math.min(0.96, 0.5 + paragraphScores[bestParagraphId] * 0.2)
+      };
     }
     function appendMessage(text,cls){
       const container=document.getElementById('messages');
