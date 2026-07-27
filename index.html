@@ -133,7 +133,11 @@
       return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,3).join(' ');
     }
     function formatParagraphs(paragraphs){
-      return paragraphs.map(p => p.p.text.trim()).join('\n\n');
+      return paragraphs.map(p => {
+        if(p && p.p && p.p.text) return p.p.text.trim();
+        if(p && p.text) return p.text.trim();
+        return '';
+      }).filter(Boolean).join('\n\n');
     }
     function expandParagraphContext(paragraphId){
       const paragraphs = state.paragraphs;
