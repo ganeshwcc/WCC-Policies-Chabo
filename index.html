@@ -46,7 +46,7 @@
     <main>
       <section class="chat">
         <div class="messages" id="messages">
-          <div class="meta">Loading content from README.md in the same folder. Ask a question after it loads.</div>
+          <div class="meta">Loading data from AD107-Student-Records.txt. Ask questions once it loads.</div>
         </div>
         <div class="composer">
           <input id="query" type="text" placeholder="Ask a question about the loaded document..." />
@@ -127,14 +127,14 @@
     document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runQuery();}});
     function runQuery(){
       const q=document.getElementById('query').value.trim(); if(!q) return; appendMessage(q,'user'); document.getElementById('query').value='';
-      if(!state.text){appendMessage('No document loaded. Load a file first.','bot');return;}
+      if(!state.text){appendMessage('No document loaded. Select a file first.','bot');return;}
       const matches=retrieve(q,5); renderMatches(matches); const out=synthesizeAnswer(q,matches); appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
     }
     document.getElementById('btnClear').addEventListener('click',()=>{document.getElementById('messages').innerHTML=''; appendMessage('Conversation cleared','bot');});
     document.getElementById('btnShowAll').addEventListener('click',()=>{if(!state.text) return alert('No document loaded'); const dlg=window.open('','_blank','noopener'); dlg.document.write(`<pre>${escapeHtml(state.text)}</pre>`); dlg.document.title='Document content';});
     document.getElementById('btnDownload').addEventListener('click',()=>{const data=Array.from(document.querySelectorAll('#messages .msg')).map(n=>n.innerText).join('\n\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'text/plain'})); a.download='conversation.txt'; a.click();});
     async function init(){
-      const fileName = 'README.md';
+      const fileName = 'AD107-Student-Records.txt';
       try{
         const res = await fetch(fileName);
         if(!res.ok) throw new Error('File not found');
@@ -144,11 +144,11 @@
         document.getElementById('messages').innerHTML = '';
         appendMessage(`Loaded ${fileName} from the same folder. Ask a question now.`, 'bot');
       }catch(e){
-        const fallback = `# WCC-Policies-Chabo\nAsk questions related to Policies of WCC.`;
+        const fallback = `# WCC Policies Chabo\nCould not load ${fileName}.`;
         indexText(fallback);
         document.getElementById('docPreview').innerHTML = `<pre>${escapeHtml(fallback)}</pre>`;
         document.getElementById('messages').innerHTML = '';
-        appendMessage(`Could not load ${fileName} from the same folder; using fallback content.`, 'bot');
+        appendMessage(`Failed to load ${fileName}; please ensure it exists in the same folder.`, 'bot');
       }
     }
     init();
