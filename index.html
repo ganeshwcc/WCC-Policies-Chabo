@@ -20,6 +20,9 @@
     main{margin-top:18px;flex:1;display:flex;min-height:0;}
     .chat{background:linear-gradient(180deg,rgba(54,13,33,0.96),rgba(51,9,29,0.98));padding:24px;display:flex;flex-direction:column;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.12);border-radius:26px;min-height:0;flex:1;}
     .messages{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 8px;display:flex;flex-direction:column;gap:12px;min-height:0;}
+    .progress{height:10px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden;margin:8px 0;}
+    .progress.hidden{display:none;}
+    .progress-bar{height:100%;width:0%;background:linear-gradient(90deg,rgba(255,129,151,0.95),rgba(255,88,122,0.9));transition:width 0.25s ease;}
     .msg{max-width:88%;padding:16px;border-radius:18px;white-space:pre-wrap;word-break:break-word;line-height:1.65;box-shadow:0 14px 30px rgba(0,0,0,0.2)}
     .user{align-self:flex-end;background:linear-gradient(135deg,rgba(255,140,170,0.98),rgba(255,215,220,0.9));color:#360d18}
     .bot{align-self:flex-start;background:linear-gradient(135deg,rgba(255,143,171,0.26),rgba(255,83,120,0.18));border:1px solid rgba(255,255,255,0.12);color:var(--text)}
@@ -60,6 +63,9 @@
       <section class="chat">
         <div class="messages" id="messages">
           <div class="meta">Loading Degree Policies Combined. Ask questions once it loads.</div>
+        </div>
+        <div id="progress" class="progress hidden" aria-live="polite">
+          <div class="progress-bar" id="progressBar"></div>
         </div>
         <div class="composer">
           <input id="query" type="text" placeholder="Ask your question" />
@@ -162,6 +168,19 @@
         confidence: Math.min(0.96, 0.6 + matches[0].score * 0.24)
       };
     }
+    function setProgress(active){
+      const progress = document.getElementById('progress');
+      const bar = document.getElementById('progressBar');
+      if(active){
+        progress.classList.remove('hidden');
+        bar.style.width = '20%';
+        setTimeout(()=>{bar.style.width = '55%';}, 100);
+        setTimeout(()=>{bar.style.width = '85%';}, 300);
+      } else {
+        bar.style.width = '100%';
+        setTimeout(()=>{progress.classList.add('hidden');bar.style.width='0%';}, 260);
+      }
+    }
     function appendMessage(text,cls){
       const container=document.getElementById('messages');
       const div=document.createElement('div');div.className='msg '+cls;div.innerText=text;
@@ -177,9 +196,13 @@
         appendMessage('Hello! How can I help you with WCC policy today?','bot');
         return;
       }
-      const matches=retrieve(q,5);
-      const out=synthesizeAnswer(q,matches);
-      appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
+      setProgress(true);
+      setTimeout(()=>{
+        const matches=retrieve(q,5);
+        const out=synthesizeAnswer(q,matches);
+        appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
+        setProgress(false);
+      }, 120);
     }
     document.getElementById('btnClear').addEventListener('click',()=>{document.getElementById('messages').innerHTML=''; appendMessage('Conversation cleared','bot');});
     async function init(){
