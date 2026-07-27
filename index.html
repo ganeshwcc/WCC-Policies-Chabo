@@ -102,12 +102,13 @@
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
     function synthesizeAnswer(query,matches){
-      if(!matches.length) return {answer:'I could not find exact information in the policy document.',confidence:0};
+      if(!matches.length) return {answer:'I could not locate a matching policy reference. Please rephrase your question or try a related policy term.',confidence:0};
       const qn = normalize(query);
       const qTokens = qn.split(' ').filter(Boolean);
       const exactMatch = matches.find(m=>m.c.norm.includes(qn));
+      const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
       if(exactMatch){
-        return {answer:`Based on the policy document: ${exactMatch.c.text.trim()}`,confidence:0.96};
+        return {answer:`According to the policy, ${transform(exactMatch.c.text)}`,confidence:0.96};
       }
       const sentenceCandidates = [];
       matches.forEach(m=>{
@@ -120,18 +121,18 @@
         });
       });
       sentenceCandidates.sort((a,b)=>{
-        const scoreA = (a.containsAll ? 100 : 0) + a.hits*10 + a.score;
-        const scoreB = (b.containsAll ? 100 : 0) + b.hits*10 + b.score;
+        const scoreA = (a.containsAll ? 100 : 0) + a.hits*12 + a.score;
+        const scoreB = (b.containsAll ? 100 : 0) + b.hits*12 + b.score;
         return scoreB - scoreA;
       });
       const best = sentenceCandidates[0];
       if(best && best.hits){
-        const confidence = Math.min(0.94, 0.45 + best.hits * 0.08 + best.score * 0.15);
-        const prefix = best.containsAll ? 'Based on the policy document:' : 'I found this relevant passage:';
-        return {answer:`${prefix} ${best.s}`,confidence};
+        const confidence = Math.min(0.94, 0.5 + best.hits * 0.08 + best.score * 0.15);
+        const prefix = best.containsAll ? 'The policy indicates:' : 'The most relevant policy passage is:';
+        return {answer:`${prefix} ${transform(best.s)}`,confidence};
       }
-      const fallback = matches[0].c.text.trim();
-      return {answer:`I found this in the policy document: ${fallback}`,confidence:Math.min(0.75, 0.4 + matches[0].score*0.2)};
+      const fallback = transform(matches[0].c.text.split(/\n/)[0] || matches[0].c.text);
+      return {answer:`I located the closest relevant policy passage: ${fallback}`,confidence:Math.min(0.75, 0.4 + matches[0].score*0.2)};
     }
     function appendMessage(text,cls){
       const container=document.getElementById('messages');
