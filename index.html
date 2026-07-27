@@ -120,7 +120,7 @@
       const density = common / (pTokens.length + 1);
       return overlap + exactPhrase + (hasAll ? 0.35 : 0) + Math.min(0.25, density * 3);
     }
-    function retrieve(query, topK=4){
+    function retrieve(query, topK=100){
       const qn = normalize(query);
       const scored = state.paragraphs.map(p=>({p,score:scoreParagraph(qn,p)}));
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
@@ -162,7 +162,7 @@
     }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please try a different policy term or ask more clearly.',confidence:0};
-      const paragraphs = matches.slice(0, 2).map(m => m.p);
+      const paragraphs = matches.map(m => m.p);
       const answerText = createHumanAnswer(query, paragraphs);
       return {
         answer: answerText,
@@ -199,7 +199,7 @@
       }
       setProgress(true);
       setTimeout(()=>{
-        const matches=retrieve(q,5);
+        const matches=retrieve(q);
         const out=synthesizeAnswer(q,matches);
         appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
         setProgress(false);
