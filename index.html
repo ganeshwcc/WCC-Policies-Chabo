@@ -109,18 +109,19 @@
       const scored = state.chunks.map(c=>({c,score:scoreChunk(qn,c)}));
       return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
-    function summarizeParagraph(queryNorm, paragraph){
+    function extractRelevantSentences(queryNorm, paragraph, limit=2){
       const qTokens = queryNorm.split(' ').filter(Boolean);
       const sentences = paragraph.text.match(/[^.!?]+[.!?]?/g) || [paragraph.text];
       const scored = sentences.map(sentence=>{
         const sn = normalize(sentence);
         const hits = qTokens.reduce((sum,t)=>sum + (sn.includes(t) ? 1 : 0),0);
+        const phraseBoost = queryNorm && sn.includes(queryNorm) ? 2 : 0;
         const lengthScore = Math.min(1, sentence.length / 120);
-        return {sentence:sentence.trim(),score:hits * 1.5 + lengthScore};
+        return {sentence:sentence.trim(),score:hits * 2 + phraseBoost + lengthScore};
       }).sort((a,b)=>b.score - a.score);
-      const topSentences = scored.filter(item=>item.score > 0).slice(0,2).map(item=>item.sentence);
-      if(topSentences.length) return topSentences.join(' ');
-      return sentences.slice(0,2).map(s=>s.trim()).join(' ');
+      const best = scored.filter(item=>item.score > 0).slice(0,limit);
+      if(best.length) return best.map(item=>item.sentence);
+      return sentences.slice(0,limit).map(s=>s.trim());
     }
     function synthesizeAnswer(query,matches){
       if(!matches.length) return {answer:'I could not locate a matching policy reference. Please rephrase your question or try a related policy term.',confidence:0};
@@ -132,12 +133,14 @@
       });
       const bestParagraphId = Object.keys(paragraphScores).sort((a,b)=>paragraphScores[b]-paragraphScores[a])[0];
       const paragraph = state.paragraphs[bestParagraphId];
-      const summary = summarizeParagraph(qn, paragraph);
+      const relevant = extractRelevantSentences(qn, paragraph, 2);
       const transform = text => text.trim().replace(/\s+/g,' ').replace(/\s+([.,!?])/g,'$1');
-      const response = transform(summary);
+      const answerText = relevant.join(' ');
+      const intro = 'According to WCC policy,';
+      const naturalAnswer = answerText ? `${intro} ${transform(answerText)}` : 'I found a relevant policy section, but I need a clearer question to answer it precisely.';
       return {
-        answer:`Based on the policy, ${response}`,
-        confidence:Math.min(0.96, 0.5 + paragraphScores[bestParagraphId] * 0.2)
+        answer: naturalAnswer,
+        confidence: Math.min(0.96, 0.52 + paragraphScores[bestParagraphId] * 0.22)
       };
     }
     function appendMessage(text,cls){
