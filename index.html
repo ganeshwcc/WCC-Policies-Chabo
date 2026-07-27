@@ -14,8 +14,8 @@
     button{background:linear-gradient(135deg,rgba(255,107,149,0.15),rgba(107,100,255,0.15));color:var(--text);border:1px solid rgba(255,255,255,0.12);padding:10px 14px;border-radius:16px;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease}
     button:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(255,107,149,0.3),rgba(107,100,255,0.25));border-color:rgba(255,255,255,0.22);box-shadow:0 18px 35px rgba(255,107,149,0.16)}
     button.primary{background:linear-gradient(135deg,rgba(255,107,149,0.98),rgba(57,209,199,0.98));color:#1b0218;border:none;box-shadow:0 20px 38px rgba(255,107,149,0.25)}
-    main{display:grid;grid-template-columns:1.1fr 0.9fr;gap:18px;margin-top:22px}
-    .chat{background:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));padding:22px;border-radius:28px;min-height:500px;display:flex;flex-direction:column;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.14)}
+    main{margin-top:22px}
+    .chat{background:linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04));padding:32px 28px;min-height:540px;display:flex;flex-direction:column;backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.14);border-radius:28px}
     .messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:14px}
     .msg{max-width:85%;padding:18px;border-radius:20px;white-space:pre-wrap;word-break:break-word;line-height:1.7;box-shadow:0 16px 36px rgba(0,0,0,0.16)}
     .user{align-self:flex-end;background:linear-gradient(135deg,rgba(255,107,149,0.94),rgba(255,191,140,0.85));color:#360d18}
@@ -24,12 +24,7 @@
     .composer{display:flex;gap:10px;margin-top:14px}
     input[type=text]{flex:1;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.08);color:var(--text);outline:none}
     input[type=text]::placeholder{color:rgba(255,255,255,0.65)}
-    .sidebar{display:flex;flex-direction:column;gap:14px}
-    .panel{background:rgba(255,255,255,0.05);padding:18px;border-radius:20px;border:1px solid rgba(255,255,255,0.08)}
-    .panel strong{display:block;margin-bottom:10px;font-size:14px;color:#ffd6e8}
-    pre{white-space:pre-wrap;word-wrap:break-word;max-height:260px;overflow:auto;background:rgba(255,255,255,0.04);padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,0.08)}
-    .snippet{background:rgba(255,110,146,0.12);padding:12px;border-radius:14px;font-size:13px;color:#ffe5f0;border:1px solid rgba(255,255,255,0.1)}
-    footer{margin-top:16px;font-size:13px;color:var(--muted);text-align:center}
+    footer{margin-top:24px;font-size:13px;color:var(--muted);text-align:center}
   </style>
 </head>
 <body>
@@ -53,20 +48,6 @@
           <button id="ask" class="primary">Ask</button>
         </div>
       </section>
-      <aside class="sidebar">
-        <div class="panel">
-          <strong>Document preview</strong>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            <button id="btnShowAll">Show content</button>
-            <button id="btnDownload">Download conversation</button>
-          </div>
-          <div id="docPreview" style="margin-top:8px"><em>No document loaded</em></div>
-        </div>
-        <div class="panel">
-          <strong>Top matches</strong>
-          <div id="matches" style="margin-top:8px"><em>—</em></div>
-        </div>
-      </aside>
     </main>
     <footer>Simple client-side retrieval + snippet synthesis. Works offline in browser.</footer>
   </div>
@@ -117,22 +98,17 @@
       const div=document.createElement('div');div.className='msg '+cls;div.innerText=text;
       container.appendChild(div);container.scrollTop=container.scrollHeight;
     }
-    function renderMatches(matches){
-      const el=document.getElementById('matches');el.innerHTML='';
-      if(!matches.length){el.innerHTML='<em>—</em>';return;}
-      matches.forEach(m=>{const d=document.createElement('div');d.className='snippet';d.innerHTML=`<div style="font-size:12px;color:var(--muted)">score: ${m.score.toFixed(2)}</div><div>${escapeHtml(m.c.text.slice(0,320))}</div>`;el.appendChild(d);});
-    }
     function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);}
     document.getElementById('ask').addEventListener('click',runQuery);
     document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runQuery();}});
     function runQuery(){
       const q=document.getElementById('query').value.trim(); if(!q) return; appendMessage(q,'user'); document.getElementById('query').value='';
-      if(!state.text){appendMessage('No document loaded. Select a file first.','bot');return;}
-      const matches=retrieve(q,5); renderMatches(matches); const out=synthesizeAnswer(q,matches); appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
+      if(!state.text){appendMessage('No document loaded.','bot');return;}
+      const matches=retrieve(q,5);
+      const out=synthesizeAnswer(q,matches);
+      appendMessage(out.answer+`\n\n(Confidence: ${(out.confidence*100).toFixed(0)}%)`,'bot');
     }
     document.getElementById('btnClear').addEventListener('click',()=>{document.getElementById('messages').innerHTML=''; appendMessage('Conversation cleared','bot');});
-    document.getElementById('btnShowAll').addEventListener('click',()=>{if(!state.text) return alert('No document loaded'); const dlg=window.open('','_blank','noopener'); dlg.document.write(`<pre>${escapeHtml(state.text)}</pre>`); dlg.document.title='Document content';});
-    document.getElementById('btnDownload').addEventListener('click',()=>{const data=Array.from(document.querySelectorAll('#messages .msg')).map(n=>n.innerText).join('\n\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'text/plain'})); a.download='conversation.txt'; a.click();});
     async function init(){
       const fileName = 'AD107-Student-Records.txt';
       try{
@@ -140,13 +116,11 @@
         if(!res.ok) throw new Error('File not found');
         const txt = await res.text();
         indexText(txt);
-        document.getElementById('docPreview').innerHTML = `<pre>${escapeHtml(txt)}</pre>`;
         document.getElementById('messages').innerHTML = '';
         appendMessage(`Loaded ${fileName} from the same folder. Ask a question now.`, 'bot');
       }catch(e){
         const fallback = `# WCC Policies Chabo\nCould not load ${fileName}.`;
         indexText(fallback);
-        document.getElementById('docPreview').innerHTML = `<pre>${escapeHtml(fallback)}</pre>`;
         document.getElementById('messages').innerHTML = '';
         appendMessage(`Failed to load ${fileName}; please ensure it exists in the same folder.`, 'bot');
       }
