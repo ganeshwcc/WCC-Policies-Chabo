@@ -72,44 +72,66 @@
   <script>
     const state = {text:'', chunks:[]};
     function normalize(s){return s.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim()}
-    function chunkText(text, chunkSize=800){
+    function chunkText(text, chunkSize=1000){
+      const sentences = text.replace(/\r/g,'').split(/(?<=[.!?])\s+/g).map(s=>s.trim()).filter(Boolean);
       const parts=[];
-      const paras = text.split(/\n{2,}/g).map(p=>p.trim()).filter(Boolean);
-      for(const p of paras){
-        if(p.length<=chunkSize) parts.push(p);
-        else for(let i=0;i<p.length;i+=chunkSize) parts.push(p.slice(i,i+chunkSize));
+      for(let i=0;i<sentences.length;i++){
+        let chunk = sentences[i];
+        let j = i;
+        while(chunk.length < chunkSize && j + 1 < sentences.length){
+          chunk += ' ' + sentences[++j];
+        }
+        parts.push(chunk);
+        i = j;
       }
       return parts.map((t,i)=>({id:i,text:t,norm:normalize(t)}));
     }
     function indexText(txt){state.text=txt;state.chunks=chunkText(txt)}
     function scoreChunk(queryNorm, chunk){
-      const qTokens = new Set(queryNorm.split(' ').filter(Boolean));
+      const qTokens = normalize(queryNorm).split(' ').filter(Boolean);
       const cTokens = new Set(chunk.norm.split(' ').filter(Boolean));
-      let common=0; qTokens.forEach(t=>cTokens.has(t) && common++);
-      return common / Math.sqrt(qTokens.size * cTokens.size + 1e-9);
+      const common = qTokens.reduce((sum,t)=>sum + (cTokens.has(t) ? 1 : 0),0);
+      const overlap = common / Math.sqrt(qTokens.length * cTokens.size + 1e-9);
+      const hasAll = qTokens.every(t=>cTokens.has(t));
+      const exactPhrase = queryNorm && chunk.norm.includes(queryNorm) ? 0.8 : 0;
+      return overlap + (hasAll ? 0.25 : 0) + exactPhrase;
     }
-    function retrieve(query, topK=3){
-      const qn=normalize(query);
-      return state.chunks.map(c=>({c,score:scoreChunk(qn,c)})).sort((a,b)=>b.score-a.score).slice(0,topK).filter(s=>s.score>0);
+    function retrieve(query, topK=4){
+      const qn = normalize(query);
+      const scored = state.chunks.map(c=>({c,score:scoreChunk(qn,c)}));
+      return scored.filter(r=>r.score>0).sort((a,b)=>b.score-a.score).slice(0,topK);
     }
     function synthesizeAnswer(query,matches){
-      if(!matches.length) return {answer:'I could not find information directly related to that question.',confidence:0};
-      const qTokens=normalize(query).split(' ').filter(Boolean);
-      const found=[];
+      if(!matches.length) return {answer:'I could not find exact information in the policy document.',confidence:0};
+      const qn = normalize(query);
+      const qTokens = qn.split(' ').filter(Boolean);
+      const exactMatch = matches.find(m=>m.c.norm.includes(qn));
+      if(exactMatch){
+        return {answer:`Based on the policy document: ${exactMatch.c.text.trim()}`,confidence:0.96};
+      }
+      const sentenceCandidates = [];
       matches.forEach(m=>{
-        const sentences=m.c.text.match(/[^.!?]+[.!?]?/g)||[m.c.text];
+        const sentences = m.c.text.match(/[^.!?]+[.!?]?/g) || [m.c.text];
         sentences.forEach(s=>{
-          const sn=normalize(s);
-          const hits=qTokens.filter(t=>sn.includes(t)).length;
-          if(hits) found.push({s:s.trim(),hits,score:m.score});
+          const sn = normalize(s);
+          const hits = qTokens.filter(t=>sn.includes(t)).length;
+          const containsAll = qTokens.length && qTokens.every(t=>sn.includes(t));
+          sentenceCandidates.push({s:s.trim(),hits,containsAll,score:m.score});
         });
       });
-      found.sort((a,b)=>b.hits*b.score - a.hits*a.score);
-      const uniq=[]; const seen=new Set();
-      found.forEach(f=>{if(!seen.has(f.s)&&uniq.length<6){seen.add(f.s);uniq.push(f.s)}});
-      const answer=uniq.length?uniq.join(' '):matches.map(m=>m.c.text.slice(0,300)).join('\n\n');
-      const confidence=Math.min(0.99,Math.max(...matches.map(m=>m.score)) + (uniq.length?0.15:0));
-      return {answer,confidence};
+      sentenceCandidates.sort((a,b)=>{
+        const scoreA = (a.containsAll ? 100 : 0) + a.hits*10 + a.score;
+        const scoreB = (b.containsAll ? 100 : 0) + b.hits*10 + b.score;
+        return scoreB - scoreA;
+      });
+      const best = sentenceCandidates[0];
+      if(best && best.hits){
+        const confidence = Math.min(0.94, 0.45 + best.hits * 0.08 + best.score * 0.15);
+        const prefix = best.containsAll ? 'Based on the policy document:' : 'I found this relevant passage:';
+        return {answer:`${prefix} ${best.s}`,confidence};
+      }
+      const fallback = matches[0].c.text.trim();
+      return {answer:`I found this in the policy document: ${fallback}`,confidence:Math.min(0.75, 0.4 + matches[0].score*0.2)};
     }
     function appendMessage(text,cls){
       const container=document.getElementById('messages');
